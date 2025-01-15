@@ -9,6 +9,7 @@ class Solution {
         }
         
         // Map to store the topmost node at each horizontal distance
+        // Node and distance , in that order
         map<int, int> topViewMap;
         
         // Queue for BFS traversal: stores pairs of (node, horizontal distance)
