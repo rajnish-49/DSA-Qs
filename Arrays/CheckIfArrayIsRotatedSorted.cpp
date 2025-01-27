@@ -24,3 +24,39 @@ public:
         return k <= 1;
     }
 };
+
+
+
+class Solution {
+public:
+    bool check(vector<int>& nums) {
+        int count = 0;
+        int n = nums.size();
+        for (int i = 0; i < n; i++) {
+            if (nums[i] > nums[(i + 1) % n])
+                count++;
+            if (count > 1)
+                return false;
+        }
+        return true;
+    }
+};
+
+
+/*
+
+Without % n, accessing the next element beyond the last index would lead to out-of-bounds access, which is undefined behavior in C++.
+
+For example:
+
+If 
+𝑖
+=
+4
+i=4 (last element) and you try to access nums[5] directly, it will cause an error because the valid indices are from 0 to 
+𝑛
+−
+1
+n−1 (0 to 4 in this case).
+
+*/
