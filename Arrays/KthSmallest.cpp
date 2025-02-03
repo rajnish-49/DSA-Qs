@@ -35,3 +35,10 @@ class Solution {
         return -1;
     }
 };
+
+/*
+freq[i] tells us how many times the number i appears in arr.
+cumulativeCount keeps track of how many numbers we have seen so far in sorted order.
+When cumulativeCount reaches k, we know we have found the k-th smallest number.
+Each index represents a number, and the value at that index represents its count.
+*/
