@@ -3,7 +3,7 @@
 class Solution {
     private:
         // Recursive function to generate all subsets
-        void solve(vector<int> nums, vector<int> output, int index, vector<vector<int>>& ans) {
+        void solve(vector <int> nums, vector<int> output, int index, vector<vector<int>>& ans) {
     
             // Base case: If we have processed all elements in nums
             if (index >= nums.size()) {
