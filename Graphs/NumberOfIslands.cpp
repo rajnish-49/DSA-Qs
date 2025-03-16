@@ -1,5 +1,7 @@
 // @ https://leetcode.com/problems/number-of-islands/description/
 
+// SAME AS CONNECTED COMPONENTS 
+
 class Solution {
     private:
     
