@@ -1,52 +1,63 @@
-// @ https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/description/?envType=daily-question&envId=2025-03-21
-
-vector<string> findAllRecipes(vector<string>& recipes, vector<vector<string>>& ingredients, vector<string>& supplies) {
-    int n = recipes.size();  
-
-    // Step 1: Store initial supplies in an unordered set for quick lookup
-    unordered_set<string> st(begin(supplies), end(supplies));
-
-    // Step 2: Create an adjacency list and in-degree array
-    unordered_map<string, vector<int>> adj;  // Maps ingredients to recipes that depend on them
-    vector<int> indegree(n, 0);  // Stores the number of missing ingredients for each recipe
-
-    // Step 3: Build adjacency list and in-degree array
-    for (int i = 0; i < n; i++) {  
-        for (string& ing : ingredients[i]) {  
-            // If the ingredient is not in the initial supplies
-            if (!st.count(ing)) {  
-                adj[ing].push_back(i);  // This ingredient contributes to making recipe[i]
-                indegree[i]++;  // Increase in-degree as recipe[i] needs this ingredient
+class Solution {
+    public:
+        vector<string> findAllRecipes(vector<string>& recipes,
+                                      vector<vector<string>>& ingredients,
+                                      vector<string>& supplies) {
+    
+            // Adjacency list (Graph representation)
+            // Key: Ingredient | Value: List of recipes that require this ingredient
+            unordered_map<string, vector<string>> adj;
+    
+            // In-degree map to store how many ingredients each recipe still needs
+            unordered_map<string, int> inDegree;
+    
+            // A set to store all initially available supplies for quick lookup
+            unordered_set<string> available(supplies.begin(), supplies.end());
+    
+            // Result vector to store the list of recipes that can be made
+            vector<string> ans;
+    
+            /*** Step 1: Construct the graph and in-degree map ***/
+            for (int i = 0; i < recipes.size(); i++) {
+                string recipe = recipes[i];
+    
+                // Set the initial in-degree (number of missing ingredients)
+                inDegree[recipe] = ingredients[i].size();
+    
+                // Iterate through the ingredients required for this recipe
+                for (string& ingredient : ingredients[i]) {
+                    // Create the adjacency list: this ingredient helps make this recipe
+                    adj[ingredient].push_back(recipe);
+                }
             }
-        }
-    }
-
-    // Step 4: Initialize the queue with recipes that have zero missing ingredients
-    queue<int> que;
-    for (int i = 0; i < n; i++) {  
-        if (indegree[i] == 0) {  // If a recipe has all required ingredients
-            que.push(i);  // Add it to the queue for processing
-        }
-    }
-
-    vector<string> result;  // Stores the recipes that can be made
-
-    // Step 5: Process recipes in the queue (Topological Sorting using BFS)
-    while (!que.empty()) {  
-        int i = que.front();  // Get the front element (recipe index)
-        que.pop();  // Remove it from the queue
-
-        string recipe = recipes[i];  // Get the recipe name
-        result.push_back(recipe);  // Add the recipe to the result as it can be made
-
-        // Step 6: Reduce the in-degree of recipes dependent on this recipe
-        for (int& idx : adj[recipe]) {  // For each recipe that depends on this recipe
-            indegree[idx]--;  // Reduce its in-degree (one less missing ingredient)
-            if (indegree[idx] == 0) {  // If it now has all required ingredients
-                que.push(idx);  // Add it to the queue for processing
+    
+            /*** Step 2: Initialize queue with all available supplies ***/
+            queue<string> q;
+    
+            // Push all initial supplies into the queue (they are available from the start)
+            for (auto& supply : supplies) {
+                q.push(supply);
             }
+    
+            /* Step 3: Process ingredients and update dependent recipes */
+            while (!q.empty()) {
+                string ingredient = q.front(); // Get the current ingredient from the queue
+                q.pop(); // Remove it from the queue
+    
+                // If the ingredient is used in any recipes, process them
+                for (string& recipe : adj[ingredient]) {
+                    inDegree[recipe]--; // Reduce the count of missing ingredients for this recipe
+    
+                    // If all required ingredients are now available (inDegree == 0)
+                    if (inDegree[recipe] == 0) {
+                        q.push(recipe);  // Add this recipe to the queue, as it can now be made
+                        ans.push_back(recipe);  // Store the recipe in the result
+                    }
+                }
+            }
+    
+            /* Step 4: Return the list of recipes that can be made */
+            return ans;
         }
-    }
-
-    return result;  // Return the list of recipes that can be made
-}
+    };
+    
