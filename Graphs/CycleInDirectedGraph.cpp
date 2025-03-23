@@ -11,7 +11,7 @@ class Solution {
           for (int neighbor : adj[node]) {
               // If the adjacent node has not been visited, perform DFS on it
               if (!visited[neighbor]) {
-                  if (dfs(neighbor, adj, visited, pathVisited)) {  
+                  if (dfs(neighbor, adj, visited, pathVisited) == true ) {  
                       return true;  // Cycle detected
                   }
               } 
@@ -46,4 +46,7 @@ class Solution {
           return false;  // No cycle found in any component of the graph
       }
   };
+  
+
+  // CAN BE DONE USING KAHN'S ALGORITHM AS WELL
   
