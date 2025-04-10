@@ -1,3 +1,5 @@
+// @https://leetcode.com/problems/find-all-possible-recipes-from-given-supplies/description/
+
 class Solution {
     public:
         vector<string> findAllRecipes(vector<string>& recipes,
