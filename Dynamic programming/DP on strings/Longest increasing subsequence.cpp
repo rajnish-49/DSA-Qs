@@ -173,35 +173,98 @@ public:
     }
 };
 
-// ==================== APPROACH 2: TABULATION (BOTTOM-UP DP) ====================
-//
-// PARADIGM SHIFT: Instead of "what can I build going FORWARD from here?"
-//                 We ask: "what's the BEST that ENDS right here?"
-//
-// KEY INSIGHT:
-// dp[i] = "length of longest increasing subsequence that ENDS at index i"
-//         NOT "starts at i", but "ENDS at i" ← this is CRUCIAL!
-//
-// WHY THIS WORKS:
-// If I know the best subsequences ending at ALL positions before me,
-// I can EXTEND any of them (if their last element is smaller than mine)
-// Then I take the LONGEST extension possible!
-//
-// VISUAL EXAMPLE:
-// nums = [2, 5, 3, 7]
-// Index:  0  1  2  3
-//
-// At i=0 (value 2): dp[0] = 1 → [2]
-// At i=1 (value 5): Can extend [2] → dp[1] = 2 → [2, 5]
-// At i=2 (value 3): Can extend [2] → dp[2] = 2 → [2, 3]
-// At i=3 (value 7): Can extend [2,5] OR [2,3] → dp[3] = 3 → [2, 5, 7] or [2, 3, 7]
-//
-// THE ALGORITHM:
-// For each position i:
-//   1. Look at ALL positions j before i (where j < i)
-//   2. If nums[i] > nums[j], we can extend the subsequence ending at j
-//   3. dp[i] = max(dp[i], dp[j] + 1) for all valid j
-//   4. Track the global maximum across all dp[i]
+#include <bits/stdc++.h>
+using namespace std;
+
+/*
+ * ============================================================
+ * LONGEST INCREASING SUBSEQUENCE (LIS) — BOTTOM UP DP
+ * ============================================================
+ *
+ * PROBLEM:
+ * Given an array, find the length of the longest subsequence
+ * such that all elements are strictly increasing.
+ *
+ * Note: A subsequence does NOT need to be contiguous.
+ * [1, 3, 6, 7] from [1, 3, 5, 6, 4, 7] is valid.
+ *
+ * ============================================================
+ * FIRST PRINCIPLES — HOW TO THINK ABOUT THIS
+ * ============================================================
+ *
+ * The brute force idea is: generate all 2^n subsequences,
+ * check which ones are increasing, return the longest.
+ * That is exponential and useless for large inputs.
+ *
+ * The key observation to reach DP:
+ *
+ *   If I am standing at index i and I want to know the
+ *   longest increasing subsequence ENDING at i, I only
+ *   need to look at elements to my LEFT that are SMALLER
+ *   than nums[i]. Among those, I pick the one that already
+ *   has the longest chain built up — and I extend it by 1.
+ *
+ * This is the entire algorithm. Everything else is just
+ * implementation of this idea.
+ *
+ * WHY DOES THIS WORK?
+ *
+ * Because the best LIS ending at i depends ONLY on the best
+ * LIS ending at some j < i where nums[j] < nums[i].
+ * The problem has OPTIMAL SUBSTRUCTURE — the answer to a
+ * larger problem is built from answers to smaller problems.
+ * And each subproblem (dp[j]) is computed before we need it,
+ * because we go left to right. This is what makes it DP.
+ *
+ * ============================================================
+ * INTUITION FOR THE DP DEFINITION
+ * ============================================================
+ *
+ * Define: dp[i] = length of the longest increasing subsequence
+ *                 that ENDS at index i (nums[i] is the last element)
+ *
+ * Why "ending at i" and not "starting at i" or "anywhere up to i"?
+ *
+ * Because we need a fixed anchor. If we say "longest LIS in
+ * the range [0..i]", it becomes hard to extend — we don't know
+ * where that LIS ends, so we can't check if nums[i+1] can
+ * follow it. By fixing the END point at i, we always know the
+ * last element, which lets us check the strictly increasing
+ * condition when extending to a future index.
+ *
+ * ============================================================
+ * RECURRENCE (the core of the algorithm)
+ * ============================================================
+ *
+ *   dp[i] = max(dp[j] + 1)
+ *           for all j < i where nums[j] < nums[i]
+ *
+ *   If no such j exists, dp[i] = 1 (just nums[i] alone)
+ *
+ * Read it as:
+ *   "Look at every element to my left that is smaller than me.
+ *    Each of them has a chain already built. I can extend the
+ *    best of those chains by 1 (by appending myself to it).
+ *    That gives me the longest possible LIS ending at i."
+ *
+ * ============================================================
+ * BASE CASE
+ * ============================================================
+ *
+ * dp[i] = 1 for all i.
+ *
+ * Every single element is a valid increasing subsequence of
+ * length 1. This is the minimum possible answer for any index.
+ * We never go below 1.
+ *
+ * ============================================================
+ * COMPLEXITY
+ * ============================================================
+ *
+ * Time  : O(n^2) — two nested loops, each running up to n
+ * Space : O(n)   — for the dp array
+ *
+ */
 
 class Solution
 {
@@ -209,122 +272,109 @@ public:
     int lengthOfLIS(vector<int> &nums)
     {
         int n = nums.size();
-        
-        // DP ARRAY INITIALIZATION:
-        // dp[i] = "length of longest increasing subsequence ENDING at index i"
-        // 
-        // Why initialize to 1?
-        // Every single element is a valid subsequence of length 1 by itself
-        // This is our BASE CASE: worst case scenario, no element before i is smaller
-        // So the best we can do is just [nums[i]] alone → length 1
+
+        // ----------------------------------------------------------
+        // dp[i] = length of longest increasing subsequence ending at i
         //
-        // Example: nums = [10, 9, 8, 7]
-        // Every element is larger than all elements after it
-        // So best LIS for each is just itself: dp = [1, 1, 1, 1]
+        // Initialized to 1 because every element alone is a valid
+        // subsequence. This also serves as the base case — if no
+        // smaller element exists to the left of i, dp[i] stays 1.
+        // ----------------------------------------------------------
         vector<int> dp(n, 1);
-        
-        // GLOBAL MAXIMUM TRACKER:
-        // The longest LIS might END at ANY position, not necessarily the last index!
-        // 
-        // Example: nums = [5, 1, 2, 3, 4]
-        //   LIS ending at index 0: [5] → length 1
-        //   LIS ending at index 4: [1, 2, 3, 4] → length 4
-        //   The answer is 4, found at index 4, NOT index 0
+
+        // ----------------------------------------------------------
+        // maxi tracks the overall answer.
         //
-        // Another example: nums = [4, 10, 4, 3, 8, 9]
-        //   LIS ending at index 5: [4, 8, 9] → length 3
-        //   But index 1 has: [4, 10] → length 2
-        //   Answer is 3, but we need to track it as we go
+        // CRITICAL: The answer is NOT always dp[n-1].
+        // The longest LIS can end at ANY index, not just the last one.
         //
-        // Initialize to 1 because minimum LIS length is always 1 (any single element)
+        // Example: nums = [5, 1, 2, 3]
+        //   dp = [1, 1, 2, 3]
+        //   Longest LIS is [1, 2, 3], ending at index 3. Fine here.
+        //
+        // Example: nums = [1, 2, 3, 0]
+        //   dp = [1, 2, 3, 1]
+        //   dp[n-1] = 1, but the real answer is 3 (LIS = [1, 2, 3]).
+        //   If we only returned dp[n-1] we would get the wrong answer.
+        //
+        // So we track the maximum dp[i] seen across all indices.
+        // ----------------------------------------------------------
         int maxi = 1;
 
-        // OUTER LOOP: For each position i, compute "best LIS ending at i"
-        // We process left to right because:
-        //   - To compute dp[i], we need dp[0], dp[1], ..., dp[i-1] already computed
-        //   - This ensures we always have the answers to smaller subproblems
-        //   - This is the "bottom-up" nature of tabulation
+        // ----------------------------------------------------------
+        // OUTER LOOP: iterate over each index i as the "end point"
+        //
+        // For each i, we compute dp[i] — the best LIS ending at i.
+        // We go left to right so that when we process index i,
+        // all dp[0], dp[1], ..., dp[i-1] are already finalized.
+        // This is what "bottom-up" means — smaller subproblems are
+        // solved before the larger ones that depend on them.
+        // ----------------------------------------------------------
         for (int i = 0; i < n; i++)
         {
-            // INNER LOOP: Look at ALL positions j before i
-            // Question we're asking at each j:
-            //   "Can I extend the subsequence that ends at j by adding nums[i]?"
+            // ------------------------------------------------------
+            // INNER LOOP: check every index j to the left of i
             //
-            // Why check all j < i?
-            // Because we don't know which previous position gives us the LONGEST extension
-            // We need to try them ALL and pick the best one
+            // We are asking: "which previous element can I extend from?"
             //
-            // Example: nums = [1, 3, 6, 7, 9, 4, 10]
-            //                  0  1  2  3  4  5  6
-            // At i=6 (value 10):
-            //   j=0: 10 > 1 ✓ can extend [1] → length 2
-            //   j=1: 10 > 3 ✓ can extend [1,3] → length 3
-            //   j=2: 10 > 6 ✓ can extend [1,3,6] → length 4
-            //   j=3: 10 > 7 ✓ can extend [1,3,6,7] → length 5
-            //   j=4: 10 > 9 ✓ can extend [1,3,6,7,9] → length 6 ← BEST!
-            //   j=5: 10 > 4 ✓ can extend [1,3,4] → length 4
-            // We pick j=4 because it gives us the longest extension
+            // For each j, if nums[j] < nums[i], it means nums[i] can
+            // come AFTER nums[j] in an increasing subsequence.
+            // In that case, dp[j] + 1 is a valid candidate for dp[i].
+            //
+            // We check ALL j < i because we don't know in advance
+            // which j will give us the longest chain. We must try
+            // every candidate and take the best.
+            //
+            // WHY ARE dp[j] VALUES ALREADY CORRECT HERE?
+            // Because j < i, and we process left to right.
+            // By the time we reach index i, all indices before it
+            // are completely solved. We are always building on a
+            // stable, already-computed foundation.
+            // This is the correctness guarantee of bottom-up DP.
+            // ------------------------------------------------------
             for (int j = 0; j < i; j++)
             {
-                // CONDITION CHECK: Can we extend the subsequence ending at j?
-                // We can ONLY extend if nums[i] > nums[j]
-                // This ensures STRICTLY INCREASING property
+                // --------------------------------------------------
+                // Can nums[i] extend the subsequence ending at j?
                 //
-                // Why strictly greater (>) and not greater-or-equal (>=)?
-                // Problem requires STRICTLY INCREASING: [1, 2, 2, 3] can't use both 2's
-                //
-                // If condition fails (nums[i] <= nums[j]):
-                //   - We can't add nums[i] after nums[j] in a valid increasing subsequence
-                //   - Skip this j and check the next one
+                // Only if nums[i] > nums[j] (strictly increasing).
+                // If nums[i] <= nums[j], appending nums[i] after
+                // nums[j] would violate the increasing property,
+                // so we skip this j entirely.
+                // --------------------------------------------------
                 if (nums[i] > nums[j])
                 {
-                    // EXTENSION LOGIC:
-                    // dp[j] = "best subsequence length ending at j"
-                    // If we add nums[i] to that subsequence: new length = dp[j] + 1
-                    //   - dp[j]: the length of subsequence ending at j
-                    //   - +1: we're adding nums[i] as the next element
+                    // ----------------------------------------------
+                    // EXTEND: dp[j] is the best chain ending at j.
+                    // By appending nums[i] to it, we get dp[j] + 1.
                     //
-                    // But wait! We might have MULTIPLE valid j's we can extend from
-                    // Example: at i=5, both j=2 and j=3 might be valid
-                    //   - Extending from j=2 might give us dp[2] + 1 = 4
-                    //   - Extending from j=3 might give us dp[3] + 1 = 5
-                    // We want the MAXIMUM of all possible extensions!
+                    // We take max(dp[i], dp[j] + 1) because there
+                    // may be multiple valid j's. dp[i] accumulates
+                    // the best result seen so far across all j's
+                    // checked in this inner loop iteration.
                     //
-                    // That's why we use max(dp[i], dp[j] + 1):
-                    //   - dp[i]: best length we've found so far for position i
-                    //             (from previous j's we've checked)
-                    //   - dp[j] + 1: length if we extend from current j
-                    //   - Take the maximum of these two
-                    //
-                    // This ensures we always keep the LONGEST possible subsequence ending at i
+                    // Example: nums = [1, 3, 2, 5], i = 3 (value 5)
+                    //   j=0: nums[0]=1 < 5, dp[0]+1 = 2 → dp[3] = 2
+                    //   j=1: nums[1]=3 < 5, dp[1]+1 = 3 → dp[3] = 3
+                    //   j=2: nums[2]=2 < 5, dp[2]+1 = 3 → dp[3] = 3
+                    //   Best is 3, meaning LIS ending at index 3 is
+                    //   either [1,3,5] or [1,2,5], both length 3.
+                    // ----------------------------------------------
                     dp[i] = max(dp[i], dp[j] + 1);
-                    
-                    // UPDATE GLOBAL MAXIMUM:
-                    // Every time we compute a new dp[i], check if it's the best overall
-                    // Why here? Because we just potentially updated dp[i] to a new value
-                    // And this new value might be larger than our previous maximum
-                    //
-                    // We could also do this check outside the inner loop, after we've
-                    // finalized dp[i], but doing it here is more efficient (no extra loop)
+
+                    // ----------------------------------------------
+                    // Update global answer whenever dp[i] changes.
+                    // The final answer is the max over all dp[i].
+                    // ----------------------------------------------
                     maxi = max(maxi, dp[i]);
                 }
-                // If nums[i] <= nums[j]: do nothing, try next j
-                // dp[i] remains as its current value (initialized to 1, or updated by previous j's)
             }
-            // After checking all j < i, dp[i] now holds the maximum LIS length ending at i
         }
 
-        // RETURN THE ANSWER:
-        // maxi contains the length of the longest increasing subsequence
-        // This is the maximum value across ALL dp[i] values
-        //
-        // Why not just return dp[n-1]?
-        // Because the longest subsequence might not end at the last position!
-        // Example: nums = [10, 9, 2, 5, 3, 7, 101, 18]
-        //   Longest might be [2, 5, 7, 101] ending at index 6
-        //   OR [2, 5, 7, 18] ending at index 7
-        //   OR [2, 3, 7, 18] ending at index 7
-        //   We need to check ALL ending positions, not just the last one
+        // ----------------------------------------------------------
+        // Return the length of the longest increasing subsequence
+        // found across all possible ending positions.
+        // ----------------------------------------------------------
         return maxi;
     }
 };
