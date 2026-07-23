@@ -1,7 +1,7 @@
 class Solution {
 public:
-    bool canFinish(int numCourses,
-                   vector<vector<int>>& prerequisites) {
+    vector<int> findOrder(int numCourses,
+                          vector<vector<int>>& prerequisites) {
 
         vector<vector<int>> adj(numCourses);
         vector<int> indegree(numCourses, 0);
@@ -11,7 +11,7 @@ public:
 
             To take 'course', we must first complete 'prerequisite'.
 
-            So the directed edge is:
+            Therefore, the directed edge is:
 
                 prerequisite -> course
         */
@@ -29,8 +29,8 @@ public:
         queue<int> q;
 
         /*
-            Any course with indegree 0 has no remaining prerequisite,
-            so it can be completed immediately.
+            Courses with indegree 0 have no prerequisites,
+            so they can be completed immediately.
         */
         for (int course = 0; course < numCourses; course++) {
             if (indegree[course] == 0) {
@@ -38,15 +38,15 @@ public:
             }
         }
 
-        int completedCourses = 0;
+        vector<int> order;
 
         while (!q.empty()) {
 
             int course = q.front();
             q.pop();
 
-            // We are able to complete this course.
-            completedCourses++;
+            // Add the currently available course to the answer.
+            order.push_back(course);
 
             /*
                 After completing this course, remove its dependency
@@ -67,11 +67,16 @@ public:
         }
 
         /*
-            If all courses were processed, no cycle exists.
+            If all courses were added, 'order' is a valid
+            topological ordering.
 
-            If some courses remain unprocessed, they are part of
-            a dependency cycle and can never reach indegree 0.
+            If some courses were not added, a cycle exists,
+            so no valid ordering is possible.
         */
-        return completedCourses == numCourses;
+        if (order.size() != numCourses) {
+            return {};
+        }
+
+        return order;
     }
 };
