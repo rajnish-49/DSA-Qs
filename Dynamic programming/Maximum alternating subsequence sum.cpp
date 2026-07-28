@@ -1,312 +1,167 @@
-// @ https://leetcode.com/problems/maximum-alternating-subsequence-sum/
+/*
+ * PROBLEM:
+ * Given array nums[], choose any subsequence (preserve relative order,
+ * skip any elements). Reindex the chosen subsequence from 0.
+ * Compute its alternating sum: add elements at even indices (0,2,4,...),
+ * subtract elements at odd indices (1,3,5,...).
+ * Return the maximum possible alternating sum over all subsequences.
+ *
+ * INPUT:  nums[] of positive integers (1 <= nums[i] <= 10^5, length <= 10^5)
+ * OUTPUT: single long long — the maximum alternating sum achievable
+ *
+ * WHY BRUTE FORCE FAILS:
+ * There are 2^n possible subsequences. For n=10^5 this is astronomically
+ * large. We need to exploit structure to avoid evaluating each one.
+ *
+ * KEY OBSERVATION:
+ * At every index we make a binary choice: take or skip.
+ * The sign applied to a taken element depends only on how many elements
+ * we've taken before it — specifically, whether that count is even (add)
+ * or odd (subtract). We don't need the full history of what we picked;
+ * we only need to track: "if I take the next element, will it be added
+ * or subtracted?" This is a single boolean — and it only flips when we
+ * actually take an element, not when we skip.
+ *
+ * FROM OBSERVATION TO APPROACH:
+ * Since the only state that matters beyond the current index is that one
+ * boolean (add-next vs subtract-next), we get a 2-state DP over indices.
+ * Total states = n * 2 = O(n), each computed in O(1) → O(n) overall.
+ *
+ * DP STATE DEFINITION:
+ * dp[i][0] = best alternating sum using elements from index 0..i,
+ *            where the last element we picked was ADDED (even position)
+ *
+ * dp[i][1] = best alternating sum using elements from index 0..i,
+ *            where the last element we picked was SUBTRACTED (odd position)
+ *
+ * TRANSITIONS:
+ * dp[i][0] = max(dp[i-1][1] + nums[i],  // TAKE: add nums[i]; prior last-pick was subtracted
+ *               dp[i-1][0])              // SKIP: last added pick is still somewhere in 0..i-1
+ *
+ * dp[i][1] = max(dp[i-1][0] - nums[i],  // TAKE: subtract nums[i]; prior last-pick was added
+ *               dp[i-1][1])              // SKIP: last subtracted pick is still in 0..i-1
+ *
+ * BASE CASES:
+ * dp[0][0] = nums[0]  → took nums[0], it sits at even index 0, so add it
+ * dp[0][1] = 0        → to have a subtracted last-pick at index 0, we'd subtract
+ *                        nums[0] as the very first element. Since all values > 0,
+ *                        this is never optimal. Best = pick nothing = 0.
+ *
+ * ANSWER: dp[n-1][0]
+ * We want the last picked element to have been added, never subtracted.
+ * Since all nums[i] > 0, ending on a subtraction always hurts — we can
+ * always improve by dropping that last subtracted element from the subsequence.
+ *
+ * TOP-DOWN maps this identically: flag=true means "next take will be added",
+ * flag=false means "next take will be subtracted". Recurse on index, memoize
+ * on (index, flag).
+ */
 
-class Solution {
+
+// ============================================================
+// APPROACH 1: TOP-DOWN MEMOIZATION
+// ============================================================
+
+class Solution1 {
 public:
-    #define ll long long
+#define ll long long
 
-    /*
-        CORE IDEA (read this first):
-
-        We are building a subsequence.
-        After reindexing, the subsequence always follows this rule:
-
-            1st picked element → +
-            2nd picked element → -
-            3rd picked element → +
-            4th picked element → -
-            ...
-
-        IMPORTANT:
-        The sign of a number does NOT depend on:
-        - its original index in nums
-        - the value itself
-
-        The sign depends ONLY on:
-        - how many elements have already been picked before it
-
-        If we have picked:
-            even count → next pick is +
-            odd count  → next pick is -
-
-        We encode this using a boolean `flag`:
-            flag == true  → next pick contributes +value
-            flag == false → next pick contributes -value
-    */
-
-
-    /*
-        solve(index, nums, flag, dp)
-
-        INTUITIVE MEANING (this is the DP state):
-
-        "Starting from position `index`,
-         and assuming that the NEXT element we decide to pick
-         will use the sign described by `flag`,
-         what is the maximum alternating sum we can still obtain?"
-
-        Key points:
-        - We are NOT storing the sum so far.
-        - We are storing the BEST POSSIBLE FUTURE GAIN from this state.
-        - Same (index, flag) situation can appear many times → memoize it.
-    */
+    // index: which element of nums we are currently deciding on
+    // flag:  true  → if we take nums[index], it gets ADDED   (+)
+    //        false → if we take nums[index], it gets SUBTRACTED (-)
+    //        flag only flips when we actually take; skipping leaves it unchanged
+    // dp:    memoization table indexed by [index][flag]
     ll solve(int index, vector<int>& nums, bool flag, vector<array<ll, 2>>& dp) {
 
         ll n = nums.size();
 
-        /*
-            Base case:
+        // No elements left to decide on; contribute 0 to the sum
+        if (index >= n) return 0;
 
-            If index has moved past the end of the array,
-            there are no elements left to consider.
+        // Already solved this (index, flag) state — reuse it
+        // Without this, overlapping subproblems cause exponential recomputation
+        if (dp[index][flag] != -1) return dp[index][flag];
 
-            So regardless of the flag,
-            the maximum additional alternating sum from here is 0.
-        */
-        if (index >= n) {
-            return 0;
-        }
-
-        /*
-            Memoization check:
-
-            If we have already solved this exact situation before
-            (same index, same expected sign for the next pick),
-            we can reuse the stored result.
-
-            dp[index][flag] already represents:
-            "maximum alternating sum achievable from this state".
-        */
-        if (dp[index][flag] != -1) {
-            return dp[index][flag];
-        }
-
-        /*
-            OPTION 1: SKIP the current element nums[index]
-
-            Meaning:
-            - We choose NOT to include nums[index] in our subsequence.
-            - Since we did not pick anything,
-              the number of picked elements does NOT change.
-            - Therefore, the expected sign for the next pick (flag)
-              remains the same.
-
-            So we simply move to index + 1 with the same flag.
-        */
+        // OPTION 1 — SKIP nums[index]:
+        // We don't place it in the subsequence, so flag doesn't change —
+        // the next element we might take still needs the same sign
         ll skip = solve(index + 1, nums, flag, dp);
 
-        /*
-            OPTION 2: TAKE the current element nums[index]
-
-            If we take it, two things happen:
-            1. It contributes either +nums[index] or -nums[index]
-               depending on `flag`.
-            2. Since we picked an element, the parity of picked elements
-               changes, so the sign for the NEXT pick flips.
-        */
-
-        // Start with the raw value
+        // OPTION 2 — TAKE nums[index]:
+        // Determine the signed contribution based on current flag
         ll val = nums[index];
+        if (flag == false) val = -val;  // odd position → subtract
 
-        /*
-            If flag == false, this means:
-            "The next picked element should be subtracted."
-
-            So we negate the value to reflect its contribution.
-        */
-        if (flag == false) {
-            val = -val;
-        }
-
-        /*
-            After taking nums[index]:
-            - We add its signed contribution (val)
-            - We move to index + 1
-            - We flip the flag because we have picked one element
-              (even → odd or odd → even count)
-        */
+        // After taking, the next element's sign must flip (!flag)
         ll take = solve(index + 1, nums, !flag, dp) + val;
 
-        /*
-            Final decision at this state:
-
-            From the same (index, flag), we have two valid choices:
-            - skip the element
-            - take the element
-
-            We choose whichever gives the larger alternating sum.
-
-            This value is:
-            - the correct answer for this state
-            - stored in dp[index][flag] for future reuse
-            - returned to the caller
-        */
+        // Store the better choice so future calls to this state are O(1)
         return dp[index][flag] = max(skip, take);
     }
 
-
-    /*
-        Entry function:
-
-        We start from index = 0
-        and we have picked NOTHING yet.
-
-        Since we have picked 0 elements (even count),
-        the FIRST element we pick must be treated as '+'.
-
-        Therefore, we start with flag = true.
-    */
     long long maxAlternatingSum(vector<int>& nums) {
-
         ll n = nums.size();
 
-        /*
-            dp[index][flag] memo table:
+        // dp[i][0] and dp[i][1] both start as -1 meaning "not yet computed"
+        vector<array<ll, 2>> dp(n, {-1, -1});
 
-            index → current position in nums
-            flag  → expected sign of the NEXT pick
-
-            dp[i][0] → best result from index i if next pick is '-'
-            dp[i][1] → best result from index i if next pick is '+'
-
-            Initialized to -1 to indicate "not yet computed".
-        */
-        vector<array<ll, 2>> dp(n, { -1, -1 });
-
-        // Compute the answer starting from the initial state
+        // Begin at index 0 with flag=true: the first element we take will be added
         return solve(0, nums, true, dp);
     }
 };
 
-class Solution {
+
+// ============================================================
+// APPROACH 2: BOTTOM-UP TABULATION
+// ============================================================
+
+class Solution2 {
 public:
-    #define ll long long
-
     long long maxAlternatingSum(vector<int>& nums) {
-
         int n = nums.size();
 
-        /*
-            DP STATE DEFINITION (this is the backbone — read this carefully):
+        // dp[i][0]: best alternating sum over elements 0..i where last picked was ADDED
+        // dp[i][1]: best alternating sum over elements 0..i where last picked was SUBTRACTED
+        // Using array<long long,2> to avoid map/pair overhead
+        vector<array<long long, 2>> dp(n);
 
-            dp[i][0]:
-                - We are choosing a subsequence from the FIRST i+1 elements
-                  (i.e., nums[0] ... nums[i])
-                - The number of picked elements is EVEN (length is even NOW)
-                - Since length is even:
-                    * last picked index in subsequence = (even - 1) = odd
-                    * odd index → SUBTRACTED
-                - dp[i][0] stores the MAX alternating sum under these conditions
+        // BASE CASES at index 0 (only nums[0] available):
+        // [0]: we took nums[0] and added it — it's the first pick, sits at even index 0
+        dp[0][0] = nums[0];
+        // [1]: having a subtracted last-pick at index 0 means we subtracted nums[0]
+        //      as the very first element. All values > 0, so this is always worse
+        //      than picking nothing. "Picked nothing" earns 0, which is our base.
+        dp[0][1] = 0;
 
-            dp[i][1]:
-                - We are choosing a subsequence from the FIRST i+1 elements
-                - The number of picked elements is ODD (length is odd NOW)
-                - Since length is odd:
-                    * last picked index in subsequence = (odd - 1) = even
-                    * even index → ADDED
-                - dp[i][1] stores the MAX alternating sum under these conditions
-
-            IMPORTANT:
-            - The DP tracks what the subsequence IS NOW, not what happens next
-            - Signs (+ / -) are a CONSEQUENCE of length parity, not a choice
-        */
-
-        vector<array<ll, 2>> dp(n, { -1, -1 });
-
-        /*
-            BASE CASE (i = 0, only nums[0] available):
-
-            Two possibilities:
-
-            1) Pick NOTHING:
-               - subsequence = []
-               - length = 0 (even)
-               - alternating sum = 0
-               → dp[0][0] = 0
-
-            2) Pick nums[0]:
-               - subsequence = [nums[0]]
-               - length = 1 (odd)
-               - first element is always ADDED
-               → dp[0][1] = nums[0]
-
-            This matches the alternating sum definition exactly.
-        */
-        dp[0][0] = 0;
-        dp[0][1] = nums[0];
-
-        /*
-            MAIN DP LOOP
-
-            At each index i, we decide:
-            - either SKIP nums[i]
-            - or TAKE nums[i]
-
-            Skipping:
-            - does NOT change subsequence length
-            - parity remains the same
-
-            Taking:
-            - increases subsequence length by 1
-            - parity FLIPS
-            - sign (+ / -) depends on the PREVIOUS length
-        */
         for (int i = 1; i < n; i++) {
 
-            /*
-                Transition for dp[i][0] (EVEN length NOW):
+            // dp[i][0]: best sum where nums[i] or some earlier element is the last ADDED pick
+            //
+            // TAKE nums[i] and ADD it:
+            //   Before this pick, the last pick was subtracted → dp[i-1][1]
+            //   Adding nums[i] on top: dp[i-1][1] + nums[i]
+            //
+            // SKIP nums[i]:
+            //   The last added element is unchanged, still somewhere in 0..i-1 → dp[i-1][0]
+            dp[i][0] = max(dp[i-1][1] + nums[i],
+                           dp[i-1][0]);
 
-                How can we end up with EVEN length after index i?
-
-                Case 1: SKIP nums[i]
-                    - previous length was already even
-                    - dp[i-1][0]
-
-                Case 2: TAKE nums[i]
-                    - previous length must have been odd
-                    - odd length ⇒ last index was even ⇒ next index is odd
-                    - odd index ⇒ SUBTRACT nums[i]
-                    - dp[i-1][1] - nums[i]
-
-                We take the maximum of these two possibilities.
-            */
-            dp[i][0] = max(
-                dp[i-1][0],
-                dp[i-1][1] - nums[i]
-            );
-
-            /*
-                Transition for dp[i][1] (ODD length NOW):
-
-                How can we end up with ODD length after index i?
-
-                Case 1: SKIP nums[i]
-                    - previous length was already odd
-                    - dp[i-1][1]
-
-                Case 2: TAKE nums[i]
-                    - previous length must have been even
-                    - even length ⇒ next index is even
-                    - even index ⇒ ADD nums[i]
-                    - dp[i-1][0] + nums[i]
-
-                Again, choose the better option.
-            */
-            dp[i][1] = max(
-                dp[i-1][1],
-                dp[i-1][0] + nums[i]
-            );
+            // dp[i][1]: best sum where nums[i] or some earlier element is the last SUBTRACTED pick
+            //
+            // TAKE nums[i] and SUBTRACT it:
+            //   Before this pick, the last pick was added → dp[i-1][0]
+            //   Subtracting nums[i]: dp[i-1][0] - nums[i]
+            //
+            // SKIP nums[i]:
+            //   The last subtracted element is unchanged → dp[i-1][1]
+            dp[i][1] = max(dp[i-1][0] - nums[i],
+                           dp[i-1][1]);
         }
 
-        /*
-            FINAL ANSWER:
-
-            After processing all elements:
-            - The subsequence may end with EVEN length or ODD length
-            - The problem does NOT restrict parity of final length
-
-            So we take the maximum of both possibilities.
-        */
-        return max(dp[n-1][0], dp[n-1][1]);
+        // dp[n-1][0]: best sum where the final picked element was added.
+        // dp[n-1][1] is always <= dp[n-1][0] because all nums[i] > 0 —
+        // any subsequence ending in a subtraction can be improved by
+        // dropping that last element, which lands us in the [0] state.
+        return dp[n-1][0];
     }
 };
-

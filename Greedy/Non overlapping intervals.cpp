@@ -1,30 +1,27 @@
+// If you're going to keep one interval and must sacrifice another among two overlapping ones, 
+// always keep the one that ends earliest — 
+// because it leaves the most room for future intervals to still fit without overlapping.
+
 class Solution {
 public:
     int eraseOverlapIntervals(vector<vector<int>>& intervals) {
-        if (intervals.empty()) return 0; // Edge case: no intervals
+        sort(intervals.begin(), intervals.end(),
+             [](const vector<int>& a, const vector<int>& b) {
+                 return a[1] < b[1];   // sort by END
+             });
 
-        // STEP 1: Sort intervals by their END time (ascending)
-        // Why? Picking intervals that end earlier leaves more room
-        // for future intervals → maximizes non-overlapping set.
-        sort(intervals.begin(), intervals.end(), [](const vector<int>& a, const vector<int>& b) {
-            return a[1] < b[1];
-        });
+        int removals = 0;
+        long long lastEnd = LLONG_MIN;
 
-        int end = INT_MIN; // Tracks end of the last chosen (kept) interval
-        int count = 0;     // Number of non-overlapping intervals we can keep
-
-        // STEP 2: Iterate over sorted intervals
-        for (auto &interval : intervals) {
-            // If current interval starts AFTER or AT the last chosen end,
-            // it does NOT overlap → we can keep it
-            if (interval[0] >= end) {
-                end = interval[1]; // Update end to current interval's end
-                count++;           // Increment kept intervals
+        for (auto& cur : intervals) {
+            if (cur[0] >= lastEnd) {
+                // no overlap, keep this one
+                lastEnd = cur[1];
+            } else {
+                // overlaps the kept interval -> must discard cur
+                removals++;
             }
-            // Else: it overlaps → skip/remove it (just don't count it)
         }
-
-        // STEP 3: Total removals = total intervals - intervals we kept
-        return intervals.size() - count;
+        return removals;
     }
 };

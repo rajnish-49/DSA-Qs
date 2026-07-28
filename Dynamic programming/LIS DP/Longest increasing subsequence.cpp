@@ -288,10 +288,6 @@ public:
         // CRITICAL: The answer is NOT always dp[n-1].
         // The longest LIS can end at ANY index, not just the last one.
         //
-        // Example: nums = [5, 1, 2, 3]
-        //   dp = [1, 1, 2, 3]
-        //   Longest LIS is [1, 2, 3], ending at index 3. Fine here.
-        //
         // Example: nums = [1, 2, 3, 0]
         //   dp = [1, 2, 3, 1]
         //   dp[n-1] = 1, but the real answer is 3 (LIS = [1, 2, 3]).

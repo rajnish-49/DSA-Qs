@@ -33,36 +33,7 @@ public:
 };
 
 
-// COUNTDOWN APPROACH 
 
-class Solution {
-public:
-    bool canJump(vector<int>& nums) {
-        // 'steps' represents how many more indices we can move forward 
-        // before we must "refuel" by landing on a bigger jump.
-        int steps = nums[0];
-        int n = nums.size();
-
-        // We start from index 1 because we already "stand" on index 0
-        for (int i = 1; i < n; i++) {
-            // Each move forward costs 1 step of fuel
-            steps--;
-
-            // If at any point we run out of steps before reaching the end,
-            // it means there’s no way forward from previous jumps → stuck
-            if (steps < 0) return false;
-
-            // Landing on a new index might give us a bigger jump range
-            // If nums[i] is greater than our remaining steps, refill with it
-            if (nums[i] > steps) {
-                steps = nums[i];
-            }
-        }
-
-        // If we finish the loop without getting stuck, we reached the last index
-        return true;
-    }
-};
 
 
 
