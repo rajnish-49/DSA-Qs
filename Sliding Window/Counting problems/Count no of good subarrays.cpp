@@ -61,6 +61,11 @@ public:
                 /* COUNTING STRATEGY: Mathematical insight for efficiency
                  * If [left, right] has >= k pairs, then:
                  * - [left, right], [left, right+1], [left, right+2], ..., [left, n-1] are ALL good
+                 * The count of integers from a to b, both inclusive, is: b - a + 1
+                 * a = right
+                 * b = n - 1
+                 * count = (n - 1) - right + 1
+                 *       = n - right
                  * - That's exactly (n - right) subarrays starting at 'left'
                  *
                  * Why this works? Adding more elements to a good subarray keeps it good
