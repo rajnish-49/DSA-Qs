@@ -1,8 +1,6 @@
 class Solution {
 public:
-    bool bfs(int start,
-             vector<vector<int>>& graph,
-             vector<int>& color) {
+    bool bfs(int start,vector<vector<int>>& graph, vector<int>& color) {
 
         queue<int> q;
 
