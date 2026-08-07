@@ -1,53 +1,117 @@
+#include <bits/stdc++.h>
+using namespace std;
+
 /*
- * MAXIMUM NUMBER OF JUMPS TO REACH LAST INDEX
- *
- * Problem: Given nums and target, find the maximum number of jumps to reach
- * index n-1 from index 0. Jump from i to j is valid iff i < j and
- * |nums[j] - nums[i]| <= target. Return -1 if unreachable.
- *
- * Brute force: Try all paths recursively — exponential, too slow.
- *
- * Key insight: The maximum jumps to reach index i depends only on the maximum
- * jumps to reach each valid predecessor j < i, not on how we got to j.
- * This is optimal substructure — so DP works.
- *
- * State: dp[i] = maximum number of jumps to reach index i from index 0.
- *               -1 means index i is unreachable.
- *
- * Transition: for each i, scan all j < i.
- *             if j is reachable and jump j->i is valid:
- *             dp[i] = max(dp[i], dp[j] + 1)
- *             (+1 because jumping from j to i costs exactly one jump)
- *
- * Base case: dp[0] = 0 (already at index 0, zero jumps used)
- *
- * Answer: dp[n-1], which stays -1 if never updated (unreachable)
- *
- * Time: O(n^2) — for each i, scan all j < i
- * Space: O(n) — dp array
- */
+    Problem: Maximum Number of Jumps to Reach the Last Index
+    Link: https://leetcode.com/problems/maximum-number-of-jumps-to-reach-the-last-index/
 
-class Solution {
+    We start at index 0 and can jump from index i to a later index j when:
+
+        abs(nums[j] - nums[i]) <= target
+
+    Find the maximum number of jumps required to reach index n - 1.
+    Return -1 if the last index cannot be reached.
+*/
+
+class Solution
+{
 public:
-    int maximumJumps(vector<int>& nums, int target) {
+    /*
+        Memoization state:
 
+        dp[i] = maximum number of jumps possible from index i
+                to the last index.
+
+        -2 means the state has not been calculated.
+        -1 means the last index is unreachable from i.
+    */
+    int solve(int i, vector<int> &nums, int target, vector<int> &dp)
+    {
         int n = nums.size();
 
-        // -1 = unreachable; only index 0 is reachable at the start
+        // Already at the destination, so no more jumps are required.
+        if (i == n - 1)
+        {
+            return 0;
+        }
+
+        if (dp[i] != -2)
+        {
+            return dp[i];
+        }
+
+        int maximumJumps = -1;
+
+        // Try jumping from i to every later index j.
+        for (int j = i + 1; j < n; j++)
+        {
+            if (abs(nums[j] - nums[i]) <= target)
+            {
+                int remainingJumps = solve(j, nums, target, dp);
+
+                // Use this jump only when j can eventually reach the end.
+                if (remainingJumps != -1)
+                {
+                    maximumJumps = max(
+                        maximumJumps,
+                        1 + remainingJumps);
+                }
+            }
+        }
+
+        return dp[i] = maximumJumps;
+    }
+
+    int maximumJumpsMemo(vector<int> &nums, int target)
+    {
+        int n = nums.size();
+
+        vector<int> dp(n, -2);
+
+        return solve(0, nums, target, dp);
+    }
+
+    int maximumJumpsTabulation(vector<int> &nums, int target)
+    {
+        int n = nums.size();
+
+        /*
+            dp[i] = maximum number of jumps used to reach index i.
+
+            -1 means index i is unreachable.
+        */
         vector<int> dp(n, -1);
         dp[0] = 0;
 
-        for (int i = 1; i < n; i++) {
-            for (int j = 0; j < i; j++) {
-                // j must be reachable, and the value difference must be within target
-                if (dp[j] != -1 && abs(nums[i] - nums[j]) <= target) {
-                    // one more jump on top of however many it took to reach j
+        for (int i = 1; i < n; i++)
+        {
+            // Try reaching i from every previous index j.
+            for (int j = 0; j < i; j++)
+            {
+                if (dp[j] != -1 &&
+                    abs(nums[i] - nums[j]) <= target)
+                {
                     dp[i] = max(dp[i], dp[j] + 1);
                 }
             }
         }
 
-        // -1 if n-1 was never reached, otherwise the maximum jump count
         return dp[n - 1];
     }
+
+    int maximumJumps(vector<int> &nums, int target)
+    {
+        // Use either implementation.
+        return maximumJumpsTabulation(nums, target);
+    }
 };
+
+/*
+    Memoization:
+    Time:  O(n²)
+    Space: O(n) DP array + O(n) recursion stack
+
+    Tabulation:
+    Time:  O(n²)
+    Space: O(n)
+*/

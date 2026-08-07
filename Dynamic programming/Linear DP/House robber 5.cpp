@@ -1,132 +1,178 @@
-// @
+#include <bits/stdc++.h>
+using namespace std;
 
-class Solution {
+/*
+    Colored House Robber
+
+    Each index contains nums[i] points and has a color colors[i].
+
+    Adjacent elements with the same color cannot both be selected.
+    Adjacent elements with different colors may both be selected.
+
+    For every index:
+    - Skip it and retain the best answer up to index - 1.
+    - Select it:
+        - Same color as previous: combine with answer up to index - 2.
+        - Different color: combine with answer up to index - 1.
+*/
+
+
+// ============================================================
+// MEMOIZATION
+// ============================================================
+
+class MemoizationSolution {
 public:
-    long long rob(vector<int>& nums, vector<int>& colors) {
-        /*
-         * PROBLEM UNDERSTANDING:
-         * =====================
-         * Classic house robber with a TWIST: We cannot rob two ADJACENT houses 
-         * if they have the SAME color code.
-         * 
-         * Key constraints to understand:
-         * 1. Adjacent houses with DIFFERENT colors CAN both be robbed
-         * 2. Adjacent houses with SAME color CANNOT both be robbed
-         * 3. Non-adjacent houses can ALWAYS be robbed (regardless of color)
-         * 
-         * This means the "adjacency rule" is CONDITIONAL on color matching.
-         * 
-         * CORE INSIGHT:
-         * =============
-         * Traditional house robber: dp[i] = max(skip house i, rob house i + dp[i-2])
-         * 
-         * Here, when we rob house i, we need to check:
-         * - If colors[i] == colors[i-1]: We MUST skip house i-1 (can only add dp[i-2])
-         * - If colors[i] != colors[i-1]: We CAN rob house i-1 (can add dp[i-1])
-         * 
-         * Why this works:
-         * - dp[i-1] already contains the maximum money from houses [0...i-1]
-         * - If house i has different color than i-1, robbing both is valid
-         * - If house i has same color as i-1, we must look back to i-2 to avoid 
-         *   the adjacent same-color violation
-         * 
-         * STATE DEFINITION:
-         * =================
-         * dp[i] = maximum money that can be robbed from houses [0...i]
-         * 
-         * The answer naturally accumulates because:
-         * - dp[i-1] represents the best solution WITHOUT necessarily robbing house i-1
-         * - It could have robbed i-1, or skipped it, or robbed i-2, etc.
-         * - When we add nums[i] to dp[i-1] (different colors), we're saying:
-         *   "Take the best solution up to i-1, and ADD house i on top of it"
-         * - This works because different colors means no constraint is violated
-         */
-        
-        int n = nums.size();
-        
-        // Edge case: Only one house, rob it
-        if (n == 1)
+    /*
+        solve(index) = maximum points obtainable by considering
+        indices from 0 to index.
+    */
+    long long solve(
+        int index,
+        vector<int>& nums,
+        vector<int>& colors,
+        vector<long long>& memo
+    ) {
+        if (index < 0) {
+            return 0;
+        }
+
+        if (index == 0) {
             return nums[0];
+        }
 
-        // dp[i] represents maximum money robbed considering houses from index 0 to i
-        vector<long long> dp(n + 1, -1);
+        if (memo[index] != LLONG_MIN) {
+            return memo[index];
+        }
 
-        // BASE CASES:
-        // ===========
-        
-        // Base case 1: Only house 0 exists, we rob it
-        dp[0] = nums[0];
-        
-        // Base case 2: Two houses exist (indices 0 and 1)
-        // This is crucial because it sets up the pattern for the rest
-        if (colors[1] == colors[0]) {
-            // Same color AND adjacent → CANNOT rob both
-            // Choose the house with more money
-            dp[1] = max(nums[0], nums[1]);
+        // Do not select the current index.
+        long long skip = solve(index - 1, nums, colors, memo);
+
+        long long take = nums[index];
+
+        if (colors[index] == colors[index - 1]) {
+            /*
+                Current and previous elements conflict, so selecting
+                the current element forces us to exclude index - 1.
+            */
+            take += solve(index - 2, nums, colors, memo);
         } else {
-            // Different colors → CAN rob both adjacent houses
-            // Take both to maximize profit
-            dp[1] = nums[0] + nums[1];
+            /*
+                Different colors do not conflict, so the current
+                element can be combined with the best answer up to index - 1.
+            */
+            take += solve(index - 1, nums, colors, memo);
         }
 
-        // RECURRENCE RELATION:
-        // ====================
-        // For each house i (starting from index 2), we have two choices:
-        
-        for (int i = 2; i < nums.size(); i++) {
-            
-            // CHOICE 1: Skip current house i
-            // Take whatever maximum we had computed till house i-1
-            long long skip = dp[i - 1];
-            
-            // CHOICE 2: Rob current house i
-            long long take = 0;
-            
-            // Now, the amount we can take depends on the color relationship:
-            
-            if (colors[i] == colors[i - 1]) {
-                // SAME COLOR as previous house:
-                // ============================
-                // We CANNOT include house i-1 in our solution
-                // Why? Because if we rob house i, and i-1 was robbed in dp[i-1],
-                // we'd violate the "adjacent same color" rule
-                // 
-                // Solution: Jump back to dp[i-2]
-                // dp[i-2] is the best solution that DEFINITELY doesn't include i-1
-                // (or if it does include i-1, it's via a different path, but that's
-                // impossible since dp is strictly increasing in valid solutions)
-                // 
-                // Actually, dp[i-2] represents best solution up to house i-2,
-                // which inherently doesn't have house i-1 included in a way that
-                // would conflict with us now robbing house i
-                take = nums[i] + dp[i - 2];
-                
-            } else {
-                // DIFFERENT COLOR from previous house:
-                // ====================================
-                // We CAN include the entire optimal solution up to i-1
-                // There's no adjacency conflict because colors differ
-                // 
-                // This is the key insight: dp[i-1] might have robbed i-1, or not
-                // But it doesn't matter - since colors differ, we can safely add
-                // house i to whatever optimal solution existed at i-1
-                take = nums[i] + dp[i - 1];
-            }
-            
-            // Take the maximum of skipping or taking house i
-            dp[i] = max(skip, take);
-        }
+        return memo[index] = max(skip, take);
+    }
 
-        // The answer is the maximum money we can rob from all houses [0...n-1]
-        return dp[n - 1];
-        
-        /*
-         * TIME COMPLEXITY: O(n) - Single pass through all houses
-         * SPACE COMPLEXITY: O(n) - DP array of size n
-         * 
-         * OPTIMIZATION POSSIBILITY:
-         * Since we only look back at dp[i-1] and dp[i-2], we could optimize
-         * space to O(1) by keeping just two variables instead of the entire array.
-         */
+    long long rob(vector<int>& nums, vector<int>& colors) {
+        int n = nums.size();
+
+        vector<long long> memo(n, LLONG_MIN);
+
+        return solve(n - 1, nums, colors, memo);
     }
 };
+
+/*
+    Time:  O(n)
+    Space: O(n) memo array + O(n) recursion stack
+*/
+
+
+// ============================================================
+// TABULATION
+// ============================================================
+
+class TabulationSolution {
+public:
+    long long rob(vector<int>& nums, vector<int>& colors) {
+        int n = nums.size();
+
+        /*
+            dp[index] = maximum points obtainable from
+            indices 0 through index.
+        */
+        vector<long long> dp(n);
+
+        dp[0] = nums[0];
+
+        for (int index = 1; index < n; index++) {
+            long long skip = dp[index - 1];
+            long long take = nums[index];
+
+            if (colors[index] == colors[index - 1]) {
+                /*
+                    Selecting the current element means index - 1
+                    cannot be selected.
+                */
+                if (index >= 2) {
+                    take += dp[index - 2];
+                }
+            } else {
+                /*
+                    The current element does not conflict with index - 1,
+                    so combine it with the complete best answer so far.
+                */
+                take += dp[index - 1];
+            }
+
+            dp[index] = max(skip, take);
+        }
+
+        return dp[n - 1];
+    }
+};
+
+/*
+    Time:  O(n)
+    Space: O(n)
+*/
+
+
+// ============================================================
+// SPACE OPTIMIZATION
+// ============================================================
+
+class SpaceOptimizedSolution {
+public:
+    long long rob(vector<int>& nums, vector<int>& colors) {
+        int n = nums.size();
+
+        if (n == 1) {
+            return nums[0];
+        }
+
+        /*
+            twoIndicesBack = dp[index - 2]
+            oneIndexBack   = dp[index - 1]
+        */
+        long long twoIndicesBack = 0;
+        long long oneIndexBack = nums[0];
+
+        for (int index = 1; index < n; index++) {
+            long long skip = oneIndexBack;
+            long long take = nums[index];
+
+            if (colors[index] == colors[index - 1]) {
+                take += twoIndicesBack;
+            } else {
+                take += oneIndexBack;
+            }
+
+            long long currentBest = max(skip, take);
+
+            twoIndicesBack = oneIndexBack;
+            oneIndexBack = currentBest;
+        }
+
+        return oneIndexBack;
+    }
+};
+
+/*
+    Time:  O(n)
+    Space: O(1)
+*/
