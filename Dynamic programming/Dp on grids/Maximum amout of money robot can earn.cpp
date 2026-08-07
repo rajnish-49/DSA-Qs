@@ -1,259 +1,259 @@
+#include <bits/stdc++.h>
+using namespace std;
+
 /*
- * PROBLEM: Maximum Amount of Money Robot Can Earn
- *
- * SIMPLE RESTATEMENT:
- * A robot starts at top-left (0,0) of an m x n grid and wants to reach
- * bottom-right (m-1, n-1). It can only move right or down.
- * Each cell has a coin value:
- *   - positive: robot gains coins
- *   - negative: a robber steals that many coins
- * The robot can NEUTRALIZE at most 2 negative cells on its path,
- * meaning it collects 0 from those cells instead of losing coins.
- * Return the maximum coins the robot can collect.
- *
- * INPUT:
- *   coins[i][j] = coin value at cell (i,j), can be negative
- *
- * OUTPUT:
- *   Maximum coins collectible on any valid path from (0,0) to (m-1,n-1)
- *
- * GOAL:
- *   Find the best path AND the best cells to neutralize on that path.
- *
- * -----------------------------------------------------------------------
- * APPROACH FROM FIRST PRINCIPLES:
- *
- * OBSERVATION 1: Robot can only move right or down.
- *   So every cell (i,j) can only be reached from (i-1,j) or (i,j-1).
- *   This is a classic grid DP structure.
- *
- * OBSERVATION 2: The robot has a special ability — 2 neutralizations.
- *   This means the state of the robot is not just its position (i,j),
- *   but also HOW MANY neutralizations it has remaining.
- *   This is the key insight that leads to a 3D DP.
- *
- * BRUTE FORCE FAILS because:
- *   There are exponentially many paths (right/down combinations),
- *   and for each path we'd need to try all combinations of which
- *   2 cells to neutralize. Too slow for m,n up to 500.
- *
- * OPTIMAL APPROACH: 3D Dynamic Programming
- *   State: dp[i][j][k] = maximum coins at cell (i,j) with k neutralizations remaining
- *   k can be 0, 1, or 2.
- *
- * STATE TRANSITION:
- *   For each cell, we arrive from top or left (whichever gives more coins).
- *   Then:
- *   - If coins[i][j] >= 0: just collect it. k doesn't change.
- *       dp[i][j][k] = max(top, left) + coins[i][j]
- *   - If coins[i][j] < 0: two choices:
- *       Choice 1 - Don't neutralize: take the loss. k stays same.
- *           dp[i][j][k] = max(top, left) + coins[i][j]
- *       Choice 2 - Neutralize: collect 0, spend one neutralization. k drops by 1.
- *           dp[i][j][k-1] = max(dp[i][j][k-1], max(top, left))
- *
- * BASE CASE: (0,0) — starting cell, always have 2 neutralizations.
- *   If positive: dp[0][0][2] = coins[0][0]
- *   If negative: dp[0][0][2] = coins[0][0]  (don't neutralize)
- *                dp[0][0][1] = 0             (neutralize, spend 1)
- *
- * ANSWER: max(dp[m-1][n-1][0], dp[m-1][n-1][1], dp[m-1][n-1][2])
- *   Because we don't know how many neutralizations the optimal path used.
- * -----------------------------------------------------------------------
- */
+    Problem: Maximum Amount of Money Robot Can Earn
+    Link: https://leetcode.com/problems/maximum-amount-of-money-robot-can-earn/
 
-class Solution {
+    A robot starts at the top-left cell (0, 0) and must reach
+    the bottom-right cell (m - 1, n - 1).
+
+    From each cell, it can move only:
+    - Right: (i, j + 1)
+    - Down:  (i + 1, j)
+
+    Cell values:
+    - A positive value means the robot earns that amount.
+    - A negative value means a robber takes that amount from the robot.
+
+    The robot can neutralize at most two robbers. If a robber is
+    neutralized, the negative value of that cell is treated as 0.
+
+    The final answer may be negative because the robot is not allowed
+    to avoid reaching the destination.
+*/
+
+class Solution
+{
+private:
+    static constexpr int NEG_INF = -1000000000;
+
+    int m, n;
+    int memo[501][501][3];
+
+    // ============================================================
+    // APPROACH 1: MEMOIZATION
+    // ============================================================
+
+    /*
+        solve(i, j, remaining) = maximum money the robot can collect
+                                 from cell (i, j) to the destination,
+                                 when it still has 'remaining'
+                                 neutralizations available.
+
+        The contribution of the current cell is included in this state.
+    */
+    int solve(vector<vector<int>> &coins, int i, int j, int remaining)
+    {
+        // Moving outside the grid does not produce a valid path.
+        if (i >= m || j >= n)
+            return NEG_INF;
+
+        /*
+            At the destination, the robot must collect its value.
+
+            If it contains a robber and a neutralization is available,
+            the robot may neutralize it and collect 0 instead.
+        */
+        if (i == m - 1 && j == n - 1)
+        {
+            if (coins[i][j] < 0 && remaining > 0)
+                return max(coins[i][j], 0);
+
+            return coins[i][j];
+        }
+
+        if (memo[i][j][remaining] != INT_MIN)
+            return memo[i][j][remaining];
+
+        /*
+            Option 1: Do not neutralize the current cell.
+
+            Add its value normally and then take the better path
+            between moving down and moving right.
+        */
+        int bestNext = max(
+            solve(coins, i + 1, j, remaining),
+            solve(coins, i, j + 1, remaining));
+
+        int takeNormally = coins[i][j] + bestNext;
+
+        /*
+            Option 2: Neutralize the current robber.
+
+            This option is available only when:
+            - the current cell is negative, and
+            - at least one neutralization remains.
+
+            The current cell then contributes 0, and one neutralization
+            is consumed before moving to the next cell.
+        */
+        int neutralize = NEG_INF;
+
+        if (coins[i][j] < 0 && remaining > 0)
+        {
+            neutralize = max(
+                solve(coins, i + 1, j, remaining - 1),
+                solve(coins, i, j + 1, remaining - 1));
+        }
+
+        return memo[i][j][remaining] =
+                   max(takeNormally, neutralize);
+    }
+
 public:
-    int maximumAmount(vector<vector<int>>& coins) {
+    int maximumAmountMemoization(vector<vector<int>> &coins)
+    {
+        m = coins.size();
+        n = coins[0].size();
 
+        // INT_MIN means that the state has not been calculated yet.
+        for (int i = 0; i < m; i++)
+        {
+            for (int j = 0; j < n; j++)
+            {
+                for (int remaining = 0; remaining <= 2; remaining++)
+                {
+                    memo[i][j][remaining] = INT_MIN;
+                }
+            }
+        }
+
+        // Initially, both neutralizations are available.
+        return solve(coins, 0, 0, 2);
+    }
+
+    // ============================================================
+    // APPROACH 2: FORWARD TABULATION
+    // ============================================================
+
+    int maximumAmountTabulation(vector<vector<int>> &coins)
+    {
         int m = coins.size();
         int n = coins[0].size();
 
-        // dp[i][j][k] = max coins at cell (i,j) with k neutralizations remaining
-        // k=2: both neutralizations unused
-        // k=1: one used, one remaining
-        // k=0: both used, none remaining
-        // Initialize everything to -1e9 meaning "unreachable state"
-        vector<vector<vector<int>>> dp(
-            m, vector<vector<int>>(n, vector<int>(3, -1e9)));
+        /*
+            dp[i][j][remaining] = maximum money collected while reaching
+                                  cell (i, j), with 'remaining'
+                                  neutralizations still available.
 
-        // BASE CASE: cell (0,0) — robot always starts here with 2 neutralizations
-        // We only set dp[0][0][2] because we always start with 2 neutralizations.
-        // dp[0][0][0] and dp[0][0][1] stay -1e9 (unreachable at start).
-        if (coins[0][0] >= 0) {
-            // Positive cell: just collect, no reason to neutralize
-            dp[0][0][2] = coins[0][0];
-        } else {
-            // Negative cell: two choices at the very start
-            dp[0][0][2] = coins[0][0]; // Choice 1: don't neutralize, take the loss, keep 2 remaining
-            dp[0][0][1] = 0;           // Choice 2: neutralize, collect 0, now 1 remaining
+            remaining can be:
+            2 -> no neutralization used
+            1 -> one neutralization used
+            0 -> both neutralizations used
+
+            NEG_INF means that the state is unreachable.
+        */
+        vector<vector<vector<int>>> dp(
+            m,
+            vector<vector<int>>(
+                n,
+                vector<int>(3, NEG_INF)));
+
+        /*
+            Initialize the starting cell.
+
+            Option 1: Do not neutralize it.
+            Both neutralizations remain available.
+        */
+        dp[0][0][2] = coins[0][0];
+
+        /*
+            Option 2: If the starting cell is negative, neutralize it.
+
+            Its contribution becomes 0 and one neutralization remains.
+        */
+        if (coins[0][0] < 0)
+        {
+            dp[0][0][1] = 0;
         }
 
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-
-                // Skip (0,0) since it is already handled as the base case above
-                // If we don't skip, the loop would overwrite our base case
+        for (int i = 0; i < m; i++)
+        {
+            for (int j = 0; j < n; j++)
+            {
+                // The starting cell has already been initialized.
                 if (i == 0 && j == 0)
                     continue;
 
-                // For each state of neutralizations remaining (0, 1, or 2)
-                // We compute the best coins we can have at (i,j) with exactly k remaining
-                for (int k = 0; k <= 2; k++) {
+                for (int remaining = 0; remaining <= 2; remaining++)
+                {
+                    /*
+                        Reach the current cell from either:
+                        - the cell above
+                        - the cell on the left
 
-                    // The robot can arrive from above (i-1,j) or from the left (i,j-1)
-                    // If the cell doesn't exist (boundary), treat it as -1e9 (unreachable)
-                    // so it never wins the max comparison
-                    int top  = (i > 0) ? dp[i - 1][j][k] : (int)-1e9;
-                    int left = (j > 0) ? dp[i][j - 1][k] : (int)-1e9;
+                        The number of remaining neutralizations does not
+                        change while moving between cells.
+                    */
+                    int fromTop =
+                        (i > 0) ? dp[i - 1][j][remaining] : NEG_INF;
 
-                    // best = maximum coins we can arrive at (i,j) with,
-                    // before collecting coins[i][j]
-                    int best = max(top, left);
+                    int fromLeft =
+                        (j > 0) ? dp[i][j - 1][remaining] : NEG_INF;
 
-                    if (coins[i][j] >= 0) {
-                        // Positive cell: always collect it, no decision needed
-                        // k stays the same — no neutralization used
-                        dp[i][j][k] = best + coins[i][j];
+                    int bestPrevious = max(fromTop, fromLeft);
 
-                    } else {
-                        // Negative cell: two choices
+                    // No valid path reaches this cell with this state.
+                    if (bestPrevious == NEG_INF)
+                        continue;
 
-                        // Choice 1: Don't neutralize
-                        // Take the loss. k stays the same.
-                        // We arrived with best coins, robber steals, we end with best + coins[i][j]
-                        dp[i][j][k] = best + coins[i][j];
+                    /*
+                        Option 1: Do not neutralize the current cell.
 
-                        // Choice 2: Neutralize (only possible if we have a neutralization left)
-                        // Block the robber, collect 0 from this cell.
-                        // We arrived with best coins, collect 0, still have best coins.
-                        // But we spent one neutralization, so k drops to k-1.
-                        // We update dp[i][j][k-1] because that is the state with one fewer remaining.
-                        // We take max because dp[i][j][k-1] may have already been set
-                        // by an earlier iteration of the k loop (e.g. k=1 sets k-1=0,
-                        // and k=2 also sets k-1=1 which was already visited).
-                        // We never want to overwrite a better value already stored there.
-                        if (k > 0) {
-                            dp[i][j][k - 1] = max(dp[i][j][k - 1], best);
-                        }
+                        Its value is added normally, whether it is
+                        positive or negative.
+                    */
+                    dp[i][j][remaining] = max(
+                        dp[i][j][remaining],
+                        bestPrevious + coins[i][j]);
+
+                    /*
+                        Option 2: Neutralize the current cell.
+
+                        Only a negative cell can be neutralized.
+                        The cell contributes 0 and the number of remaining
+                        neutralizations decreases by one.
+                    */
+                    if (coins[i][j] < 0 && remaining > 0)
+                    {
+                        dp[i][j][remaining - 1] = max(
+                            dp[i][j][remaining - 1],
+                            bestPrevious);
                     }
                 }
             }
         }
 
-        // The answer is at the bottom-right cell.
-        // We don't know how many neutralizations the optimal path used,
-        // so we take the max across all three possible remaining counts.
-        return max(
-            {dp[m - 1][n - 1][0], dp[m - 1][n - 1][1], dp[m - 1][n - 1][2]});
+        /*
+            The robot may use zero, one, or both neutralizations.
+
+            Therefore, take the best value among all possible numbers
+            of neutralizations remaining at the destination.
+        */
+        return max({
+            dp[m - 1][n - 1][0],
+            dp[m - 1][n - 1][1],
+            dp[m - 1][n - 1][2]});
+    }
+
+    int maximumAmount(vector<vector<int>> &coins)
+    {
+        // Either implementation can be used.
+        return maximumAmountTabulation(coins);
     }
 };
-
 
 /*
- * TOP-DOWN MEMOIZATION APPROACH
- *
- * Same idea as bottom-up but written recursively.
- * We define solve(i, j, neu) = maximum coins collectible
- * from cell (i,j) to (m-1,n-1) with neu neutralizations remaining.
- *
- * KEY DIFFERENCE FROM BOTTOM-UP:
- *   Bottom-up fills the table iteratively from (0,0) to (m-1,n-1).
- *   Top-down starts from (0,0) and recursively explores forward,
- *   caching results so each (i,j,neu) state is computed only once.
- *
- * STATE:
- *   solve(i, j, neu) = max coins from (i,j) to destination with neu neutralizations left
- *
- * BASE CASES:
- *   1. Reached destination (m-1, n-1):
- *      - If cell is negative and neu > 0: neutralize it, return 0
- *      - Otherwise: return coins[i][j] as is
- *   2. Out of bounds: return INT_MIN (impossible state)
- *
- * TRANSITION:
- *   At every cell we have two choices:
- *   Choice 1 (take): collect coins[i][j] as is, neu unchanged
- *   Choice 2 (skip): only if cell is negative and neu > 0,
- *                    collect 0, neu decreases by 1
- *   Return max of both choices.
- *
- * MEMOIZATION:
- *   t[i][j][neu] stores the result of solve(i,j,neu)
- *   so we never recompute the same state twice.
- *   Initialized to INT_MIN meaning "not yet computed".
- */
+    Number of states:
 
-class Solution {
-public:
-    int m;
-    int n;
-    // t[i][j][neu] = max coins from (i,j) to (m-1,n-1) with neu neutralizations remaining
-    // neu can be 0, 1, or 2 — so third dimension is size 3
-    int t[501][501][3];
+        m × n cells × 3 neutralization states
 
-    int solve(vector<vector<int>>& coins, int i, int j, int neu) {
+    Memoization:
+        Time Complexity:  O(m × n)
+        Space Complexity: O(m × n) DP + O(m + n) recursion stack
 
-        // BASE CASE 1: Reached the destination cell
-        // We still need to collect from this cell before stopping
-        if(i == m-1 && j == n-1) {
-            // If cell is negative and we have a neutralization left, use it
-            // Collect 0 instead of losing coins — always better than taking the loss
-            if(coins[i][j] < 0 && neu > 0) {
-                return 0;
-            }
-            // Otherwise collect as is (positive cell, or negative with no neu left)
-            return coins[i][j];
-        }
-
-        // BASE CASE 2: Went out of bounds
-        // Robot moved beyond the grid — this path is invalid
-        // Return INT_MIN so this path never gets chosen in a max comparison
-        if(i >= m || j >= n) {
-            return INT_MIN;
-        }
-
-        // MEMOIZATION CHECK: if this state was already computed, return cached result
-        // This prevents recomputing the same (i,j,neu) state multiple times
-        if(t[i][j][neu] != INT_MIN) {
-            return t[i][j][neu];
-        }
-
-        // CHOICE 1: Don't neutralize this cell.
-        // Collect coins[i][j] as is (positive or negative), then move to the best next cell.
-        // neu stays the same because we didn't spend a neutralization.
-        int take = coins[i][j] + max(solve(coins, i+1, j, neu), solve(coins, i, j+1, neu));
-
-        // CHOICE 2: Neutralize this cell.
-        // Only possible if current cell is negative AND we have neutralizations remaining.
-        // If we neutralize, we collect 0 from this cell (so coins[i][j] is not added).
-        // We spend one neutralization so neu becomes neu-1 for all future cells.
-        int skip = INT_MIN; // default to impossible in case we can't neutralize
-        if(coins[i][j] < 0 && neu > 0) {
-            int skipDown  = solve(coins, i+1, j, neu-1); // go down with one less neutralization
-            int skipRight = solve(coins, i, j+1, neu-1); // go right with one less neutralization
-            skip = max(skipDown, skipRight); // best future coins after neutralizing this cell
-        }
-
-        // Store and return the best of both choices for this state (i, j, neu)
-        return t[i][j][neu] = max(take, skip);
-    }
-
-    int maximumAmount(vector<vector<int>>& coins) {
-        m = coins.size();
-        n = coins[0].size();
-
-        // Initialize entire memo table to INT_MIN meaning "not yet computed"
-        // We use INT_MIN and not 0 because 0 is a valid answer
-        for(int i = 0; i < 501; i++) {
-            for(int j = 0; j < 501; j++) {
-                for(int k = 0; k < 3; k++) {
-                    t[i][j][k] = INT_MIN;
-                }
-            }
-        }
-
-        // Start recursion from (0,0) with 2 neutralizations remaining
-        return solve(coins, 0, 0, 2);
-    }
-};
+    Tabulation:
+        Time Complexity:  O(m × n)
+        Space Complexity: O(m × n)
+*/
