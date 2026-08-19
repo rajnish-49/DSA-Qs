@@ -1,40 +1,61 @@
-// @ https://leetcode.com/problems/boats-to-save-people/
+/*
+Problem: 881. Boats to Save People
+Link: https://leetcode.com/problems/boats-to-save-people/
+
+Description:
+Each boat can carry at most 2 people, and the total weight of those
+people cannot exceed 'limit'.
+
+Return the minimum number of boats required to carry everyone.
+
+Approach: Greedy + Two Pointers
+
+1. Sort the people by weight.
+2. Keep one pointer at the lightest person and one at the heaviest.
+3. Always handle the heaviest person first.
+
+   - If lightest + heaviest <= limit:
+     pair them together and move both pointers.
+
+   - Otherwise:
+     the heaviest person must go alone because if even the lightest
+     person cannot fit with them, nobody else can.
+
+4. Every iteration uses exactly one boat.
+
+Time Complexity: O(n log n)
+Space Complexity: O(1) apart from sorting space.
+*/
 
 class Solution {
 public:
     int numRescueBoats(vector<int>& people, int limit) {
-        // STEP 1: Sort people by weight
-        // Sorting is necessary because we want to pair the heaviest person
-        // with the lightest person possible (greedy approach).
+
         sort(people.begin(), people.end());
 
-        // STEP 2: Initialize two pointers
-        // l → index of the lightest person not yet placed in a boat
-        // r → index of the heaviest person not yet placed in a boat
-        int l = 0;
-        int r = people.size() - 1;
+        int left = 0;
+        int right = people.size() - 1;
 
-        int ans = 0;  // total number of boats required
+        int boats = 0;
 
-        // STEP 3: Process until all people are placed in boats
-        while (l <= r) {
-            // CASE 1: If the lightest + heaviest can share a boat
-            if (people[l] + people[r] <= limit) {
-                // Both can go together
-                l++;  // move to next lightest
-                r--;  // move to next heaviest
-            } 
-            // CASE 2: Otherwise, the heaviest person must go alone
-            else {
-                // We cannot pair r with l (or anyone else),
-                // so the heaviest person occupies one boat alone.
-                r--;  // move to next heaviest
+        while (left <= right) {
+
+            // If the lightest person can fit with the heaviest,
+            // pair them together.
+            if (people[left] + people[right] <= limit) {
+                left++;
+                right--;
             }
-            // In both cases, we used one boat
-            ans++;
+
+            // Otherwise, the heaviest person goes alone.
+            else {
+                right--;
+            }
+
+            // In both cases, we used one boat.
+            boats++;
         }
 
-        // STEP 4: Return total number of boats used
-        return ans;
+        return boats;
     }
 };

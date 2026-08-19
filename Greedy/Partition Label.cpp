@@ -1,74 +1,99 @@
 /*
-PROBLEM: Partition Labels
-Partition a string into as many parts as possible so that each letter appears
-in at most one part. Return the sizes of these parts.
+Problem: 763. Partition Labels
+Link: https://leetcode.com/problems/partition-labels/
 
-GREEDY STRATEGY:
-For each partition, we must include ALL occurrences of every character in it.
-The key insight: Once we start a partition with character 'x', we MUST extend
-it to include the LAST occurrence of 'x'. But that might introduce new characters,
-whose last occurrences we must also include. This creates a chain effect.
+Description:
+You are given a string s.
 
-APPROACH:
-1. Find the last occurrence of each character (preprocessing)
-2. Scan through string, extending partition boundary as needed
-3. When current position reaches partition boundary, we can safely cut
+We need to divide it into as many parts as possible such that
+each letter appears in at most one part.
 
+Return the size of each partition.
+
+Example:
+s = "ababcbacadefegdehijhklij"
+
+Output:
+[9,7,8]
+
+Approach: Greedy
+
+Key idea:
+If a character appears in the current partition, then that partition
+must extend at least up to the LAST occurrence of that character.
+
+So first store the last index of every character.
+
+Then traverse the string and maintain:
+
+    end = farthest last occurrence of any character
+          seen in the current partition
+
+For each index i:
+
+    end = max(end, last[s[i]])
+
+This means the current partition must continue at least until 'end'.
+
+When:
+
+    i == end
+
+all characters seen in the current partition have their last occurrence
+inside this partition.
+
+So we can safely end the partition here.
+
+Then:
+    partition size = end - start + 1
+
+and the next partition starts from i + 1.
+
+Why this is greedy:
+We close a partition at the earliest possible position where every
+character inside it is completely contained in that partition.
+
+This gives the maximum possible number of partitions.
+
+Time Complexity: O(n)
+Space Complexity: O(1), because there are only 26 lowercase letters.
 */
 
-class Solution
-{
+class Solution {
 public:
-    vector<int> partitionLabels(string s)
-    {
+    vector<int> partitionLabels(string s) {
 
-        // 📍 PHASE 1: Preprocessing - Map each character to its LAST occurrence
-        // WHY? We need to know how far we MUST extend each partition
-        unordered_map<char, int> lastOccurrence;
+        // Store the last occurrence of every character.
+        vector<int> last(26);
 
-        for (int i = 0; i < s.size(); i++)
-        {
-            lastOccurrence[s[i]] = i;
-            // Overwrites previous index, keeping only the LAST occurrence
-            // This is the farthest point we need to reach if this char is in partition
+        for (int i = 0; i < s.size(); i++) {
+            last[s[i] - 'a'] = i;
         }
 
-        // 🎯 PHASE 2: Build partitions using greedy approach
-        int start = 0;   // Start index of current partition
-        int end = 0;     // End boundary of current partition (farthest we must go)
-        vector<int> ans; // Store sizes of each partition
+        vector<int> ans;
 
-        // Scan through string, dynamically extending partition as needed
-        for (int i = 0; i < s.size(); i++)
-        {
-            // 🔑 KEY INSIGHT: Update partition boundary
-            // Current character s[i] last appears at lastOccurrence[s[i]]
-            // Our partition MUST extend at least that far to include all occurrences
-            end = max(end, lastOccurrence[s[i]]);
+        int start = 0;
+        int end = 0;
 
-            // 💡 WHY MAX?
-            // We might have already committed to going further due to previous characters
-            // Example: If partition contains 'a' (last at 8) and 'b' (last at 5)
-            // We must go to index 8, not stop at 5
+        for (int i = 0; i < s.size(); i++) {
 
-            // ✂️ CUT POINT: Can we partition here?
-            if (i == end)
-            {
-                // We've reached the farthest point any character in this partition needs
-                // All characters [start...end] are now "contained" - safe to cut!
-                ans.push_back(end - start + 1); // Record partition size
-                start = end + 1;                // Next partition starts right after current
+            // If the current character appears later,
+            // the current partition must extend at least that far.
+            end = max(end, last[s[i] - 'a']);
 
-                // 🧠 WHY THIS WORKS:
-                // - No character in [start...end] appears after 'end'
-                // - No character after 'end' appears in [start...end]
-                // Perfect partition achieved!
+            // When i reaches end, every character seen from
+            // start to i has its last occurrence within this range.
+            //
+            // So this partition can safely end here.
+            if (i == end) {
+
+                ans.push_back(end - start + 1);
+
+                // Start the next partition after this index.
+                start = i + 1;
             }
-            // If i < end, we haven't finished current partition yet, keep scanning
         }
 
         return ans;
     }
 };
-
-

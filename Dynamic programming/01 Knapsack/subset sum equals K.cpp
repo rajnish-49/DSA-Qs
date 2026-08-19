@@ -155,7 +155,172 @@ WHY DP WORKS HERE:
 ═══════════════════════════════════════════════════════════════════════════════
 */
 
+#include <bits/stdc++.h>
+using namespace std;
 
+/*
+    Problem: Subset Sum Equal To K
+
+    Given an array of positive integers and an integer k,
+    determine whether there exists a subset whose sum is exactly k.
+
+    For every element we have two choices:
+    - Skip it -> target remains the same.
+    - Take it -> target reduces by the value of the element.
+
+    Since every element can be used at most once, this follows
+    the 0/1 Knapsack take/skip structure.
+*/
+
+
+// ============================================================
+// MEMOIZATION
+// ============================================================
+
+vector<vector<int>> dp;
+
+/*
+    solve(idx, target) = whether we can form 'target'
+                         using elements arr[idx...n-1].
+*/
+bool solve(int idx, int target, vector<int>& arr) {
+
+    // We have successfully formed the required sum.
+    if (target == 0)
+        return true;
+
+    // No elements remain and target is still not 0.
+    if (idx == arr.size())
+        return false;
+
+    if (dp[idx][target] != -1)
+        return dp[idx][target];
+
+    // Do not use arr[idx], so the required target stays unchanged.
+    bool skip = solve(idx + 1, target, arr);
+
+    bool take = false;
+
+    /*
+        Take arr[idx].
+
+        arr[idx] contributes towards the target, so now the remaining
+        elements need to form:
+
+            target - arr[idx]
+    */
+    if (arr[idx] <= target)
+        take = solve(idx + 1, target - arr[idx], arr);
+
+    // We only need one valid subset to exist.
+    return dp[idx][target] = skip || take;
+}
+
+bool subsetSumToK(int n, int k, vector<int>& arr) {
+
+    dp.assign(n, vector<int>(k + 1, -1));
+
+    return solve(0, k, arr);
+}
+
+
+// ============================================================
+// TABULATION
+// ============================================================
+
+bool subsetSumToK(int n, int k, vector<int>& arr) {
+
+    /*
+        dp[i][t] = whether we can form sum t using
+                   the first i elements of the array.
+
+        Row i represents arr[0...i-1].
+    */
+    vector<vector<bool>> dp(
+        n + 1,
+        vector<bool>(k + 1, false)
+    );
+
+    /*
+        Sum 0 is always possible regardless of how many elements
+        we have considered — simply choose the empty subset.
+    */
+    for (int i = 0; i <= n; i++) {
+        dp[i][0] = true;
+    }
+
+    for (int i = 1; i <= n; i++) {
+        for (int t = 1; t <= k; t++) {
+
+            /*
+                Skip arr[i - 1].
+
+                Ask the previous row whether target t could already
+                be formed without using the current element.
+            */
+            bool skip = dp[i - 1][t];
+
+            bool take = false;
+
+            /*
+                Take arr[i - 1].
+
+                Current element contributes arr[i - 1], so we ask
+                the previous row whether it could form the remaining:
+
+                    t - arr[i - 1]
+
+                Previous row is used because each element can be used once.
+            */
+            if (arr[i - 1] <= t) {
+                take = dp[i - 1][t - arr[i - 1]];
+            }
+
+            dp[i][t] = skip || take;
+        }
+    }
+
+    return dp[n][k];
+}
+
+
+// ============================================================
+// SPACE OPTIMIZED TABULATION
+// ============================================================
+
+bool subsetSumToK(int n, int k, vector<int>& arr) {
+
+    /*
+        dp[t] = whether sum t can be formed using
+                the elements processed so far.
+    */
+    vector<bool> dp(k + 1, false);
+
+    // Empty subset forms sum 0.
+    dp[0] = true;
+
+    for (int i = 0; i < n; i++) {
+
+        int x = arr[i];
+
+        /*
+            Traverse target backwards.
+
+            dp[t - x] represents whether we could form the remaining
+            sum before using the current element x.
+
+            Going backwards is important in 0/1 Knapsack because it
+            prevents the current element from being used multiple times.
+        */
+        for (int t = k; t >= x; t--) {
+
+            // Either skip x, or take x and form the remaining sum t - x.
+            dp[t] = dp[t] || dp[t - x];
+        }
+    }
+
+    return dp[k];
+}
 /*
 ═══════════════════════════════════════════════════════════════════════════════
 SPACE-OPTIMIZED SUBSET SUM: From O(n × k) to O(k)

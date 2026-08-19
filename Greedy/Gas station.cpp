@@ -1,41 +1,89 @@
-// https://leetcode.com/problems/gas-station/description/?envType=problem-list-v2&envId=greedy
+/*
+Problem: 134. Gas Station
+Link: https://leetcode.com/problems/gas-station/
+
+Description:
+There are n gas stations arranged in a circle.
+
+gas[i]  = amount of gas available at station i
+cost[i] = gas required to travel from station i to station i + 1
+
+Return the starting station index from which we can complete
+the entire circular route.
+
+If it is impossible, return -1.
+
+Approach: Greedy
+
+For every station, the useful value is:
+
+    gas[i] - cost[i]
+
+This tells us how much our tank changes after leaving station i.
+
+We maintain:
+1. totalTank   -> checks whether completing the whole circuit is possible
+2. currentTank -> checks whether the current chosen start can continue
+3. start       -> current candidate starting station
+
+Key greedy observation:
+
+If we start from 'start' and currentTank becomes negative at station i,
+then starting from 'start' cannot reach station i + 1.
+
+Also, none of the stations between start and i can be valid starts.
+
+Why?
+Because while travelling from start to i, the tank was non-negative
+before finally failing at i.
+
+Any station in between would start with less accumulated fuel than
+we had from 'start', so it would also fail before or at i.
+
+Therefore, we can safely discard all those stations and try:
+
+    start = i + 1
+
+Finally:
+- If total gas < total cost, no solution exists.
+- Otherwise, the final 'start' is the valid answer.
+
+Time Complexity: O(n)
+Space Complexity: O(1)
+*/
 
 class Solution {
 public:
     int canCompleteCircuit(vector<int>& gas, vector<int>& cost) {
 
-        int totalGas = 0; // Total net gas across all stations (to check feasibility)
-        int tank = 0;     // Current tank when starting from candidate station
-        int start = 0;    // Candidate starting station index
+        int totalTank = 0;
+        int currentTank = 0;
+        int start = 0;
 
-        int n = gas.size();
+        for (int i = 0; i < gas.size(); i++) {
 
-        for (int i = 0; i < n; ++i) {
-            int net = gas[i] - cost[i]; // Net gas gain/loss at station i
-            totalGas += net;            // Keep track of total gas vs total cost
-            tank += net;                // Track current tank from candidate start
+            // Net fuel gained/lost after travelling from
+            // station i to station i + 1.
+            int net = gas[i] - cost[i];
 
-            // --- GREEDY STEP ---
-            // If tank goes negative, it means starting from 'start' we can't reach station i+1
-            if (tank < 0) {
-                // PROOF OF SKIPPING INTERMEDIATE STATIONS:
-                // Suppose we try to start at some station between 'start' and 'i'.
-                // Let's call it 'mid'. Then, tank from mid to i is:
-                // sum_{k=mid}^{i} net[k] = sum_{k=start}^{i} net[k] - sum_{k=start}^{mid-1} net[k]
-                // We know sum_{k=start}^{i} net[k] < 0 (we failed at i)
-                // Also, sum_{k=start}^{mid-1} net[k] >= 0 (otherwise we would have failed before mid)
-                // Subtracting a non-negative number from a negative number is still negative.
-                // Therefore, starting at 'mid' will also fail at i.
-                // This is why the greedy approach is safe: we can skip all stations between 'start' and 'i'.
+            totalTank += net;
+            currentTank += net;
 
-                start = i + 1; // Move candidate start to the next station after failure
-                tank = 0;      // Reset tank because a new start always begins empty
+            // Current starting station cannot reach i + 1.
+            // So every station from 'start' to i can be discarded
+            // as a possible starting point.
+            if (currentTank < 0) {
+                start = i + 1;
+                currentTank = 0;
             }
         }
 
-        // --- FINAL CHECK ---
-        // If total gas is enough to cover total cost, the last candidate 'start' is guaranteed to work.
-        // Otherwise, return -1 (no solution).
-        return (totalGas >= 0) ? start : -1;
+        // If total gas is less than total travel cost,
+        // completing the entire circular route is impossible.
+        if (totalTank < 0) {
+            return -1;
+        }
+
+        return start;
     }
 };
