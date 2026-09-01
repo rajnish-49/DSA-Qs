@@ -1,24 +1,54 @@
-// @ https://www.geeksforgeeks.org/problems/kth-smallest-element5635/1?itm_source=geeksforgeeks&itm_medium=article&itm_campaign=practice_card
+ /*
+Problem:
+Given an integer array nums and an integer k, return the kth smallest
+element in the array.
 
+Note:
+The kth smallest element is based on sorted order, not the kth distinct element.
 
+Example:
+nums = [3,2,1,5,6,4], k = 2
+Answer = 2
 
-int kthSmallest(int arr[], int l, int r, int k) {
-    // Max heap (priority queue) to store the k smallest elements
-    priority_queue<int> pq;
+Approach:
+Use a Max Heap of size k.
 
-    // Step 1: Insert the first k elements into the max heap
-    for (int i = 0; i < k; i++) {
-        pq.push(arr[i]); // Push first k elements into the heap
-    }
+Idea:
+- Keep the k smallest elements seen so far in the heap.
+- Since it is a Max Heap, the largest among these k elements
+  stays at the top.
+- That largest element is the kth smallest element.
 
-    // Step 2: Process the remaining elements
-    for (int i = k; i <= r; i++) { // Traverse remaining elements in the array
-        if (arr[i] < pq.top()) {   // If current element is smaller than max element in heap
-            pq.pop();              // Remove the largest element from the heap
-            pq.push(arr[i]);       // Insert the smaller element into the heap
+Question Link:
+https://www.geeksforgeeks.org/problems/kth-smallest-element5635/1
+
+Time Complexity: O(n log k)
+Space Complexity: O(k)
+*/
+
+class Solution {
+public:
+    int kthSmallest(vector<int> &nums, int k) {
+
+        // Max Heap
+        // The largest element will always be at the top.
+        priority_queue<int> maxHeap;
+
+        for (int num : nums) {
+
+            // Add current element to the heap
+            maxHeap.push(num);
+
+            // We only need to keep the k smallest elements.
+            // If size becomes greater than k,
+            // remove the largest element.
+            if (maxHeap.size() > k) {
+                maxHeap.pop();
+            }
         }
-    }
 
-    // Step 3: The root of the heap (pq.top()) is the k-th smallest element
-    return pq.top();
-}
+        // Heap now contains the k smallest elements.
+        // The largest among them is the kth smallest element.
+        return maxHeap.top();
+    }
+};
